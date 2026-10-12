@@ -16,3 +16,7 @@ def test_version_comes_from_the_distribution():
 def test_runtime_dependencies_are_pinned():
     # ADR 0005: exactly these two, pinned; xlrd pin carried over from dataset-names ADR 0005.
     assert sorted(PYPROJECT["project"]["dependencies"]) == ["pyyaml==6.0.3", "xlrd==2.0.2"]
+
+
+def test_build_backend_is_pinned():
+    assert PYPROJECT["build-system"]["requires"] == ["hatchling==1.32.4"]

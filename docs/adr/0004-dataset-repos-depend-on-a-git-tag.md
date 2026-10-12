@@ -30,7 +30,7 @@ Accepted (2026-10-12). Spec [004](../specs/004-source-toolkit/spec.md).
   ```
 
   and commits the resulting `uv.lock`. Upgrading is a change of both lines in one pull request.
-- The package version in `pyproject.toml` equals the tag without the `v`. CI checks that a fresh project installs the package from this repo's git URL.
+- The package version in `pyproject.toml` equals the tag without the `v`; CI fails a tag push where it does not. CI also checks that a fresh project installs the package from this repo's git URL.
 - No PyPI publication for now. Publishing a wheel later does not change the import or distribution name (ADR 0003), so consumers would only drop the `[tool.uv.sources]` entry.
 
 ## Consequences

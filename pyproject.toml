@@ -18,7 +18,7 @@ Repository = "https://github.com/BenchCommons/tools-dataset"
 dev = ["pytest==9.1.1"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
