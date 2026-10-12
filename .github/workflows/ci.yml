@@ -11,3 +11,31 @@ permissions:
 jobs:
   docs:
     uses: BenchCommons/.github/.github/workflows/docs-ci.yml@main
+
+  tests:
+    name: Python tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Tests (never use the network)
+        run: uv run pytest -q
+
+  install-from-git:
+    name: Install from a git URL (spec 004, R1.4)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: astral-sh/setup-uv@v6
+      - name: Install the commit under test into a fresh uv project and import every module
+        env:
+          REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPO: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          mkdir "$RUNNER_TEMP/consumer" && cd "$RUNNER_TEMP/consumer"
+          uv init --bare --python 3.12
+          uv add "benchcommons-dataset-tool @ git+$REPO@$REF"
+          uv run python -c "import datasettool, datasettool.sources; print(datasettool.__version__)"
