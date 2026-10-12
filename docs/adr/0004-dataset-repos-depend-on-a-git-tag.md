@@ -1,4 +1,4 @@
-# 0004. Dataset repos depend on dataset-tool through a uv git source pinned to a tag
+# 0004. Dataset repos depend on tools-dataset through a uv git source pinned to a tag
 
 ## Status
 
@@ -18,15 +18,15 @@ Accepted (2026-10-12). Spec [004](../specs/004-source-toolkit/spec.md).
 
 ## Decision
 
-- dataset-tool releases are git tags `vX.Y.Z` (SemVer) on `main`, created by the maintainer after the release's pull request merges. Tags are never moved or deleted.
+- tools-dataset releases are git tags `vX.Y.Z` (SemVer) on `main`, created by the maintainer after the release's pull request merges. Tags are never moved or deleted.
 - A dataset repo declares the dependency by version and pins its source to the tag with `uv`:
 
   ```toml
   [project]
-  dependencies = ["benchcommons-dataset-tool==0.1.0"]
+  dependencies = ["benchcommons-tools-dataset==0.1.0"]
 
   [tool.uv.sources]
-  benchcommons-dataset-tool = { git = "https://github.com/BenchCommons/dataset-tool", tag = "v0.1.0" }
+  benchcommons-tools-dataset = { git = "https://github.com/BenchCommons/tools-dataset", tag = "v0.1.0" }
   ```
 
   and commits the resulting `uv.lock`. Upgrading is a change of both lines in one pull request.
@@ -37,5 +37,5 @@ Accepted (2026-10-12). Spec [004](../specs/004-source-toolkit/spec.md).
 
 - Consumers need network access to GitHub when they resolve or sync without a cache, as they already do for PyPI.
 - A tag must exist before a consumer can adopt a version; the pull request that changes the package ends with a tagging step for the maintainer.
-- `pip` users can install the same ref with `pip install "benchcommons-dataset-tool @ git+https://github.com/BenchCommons/dataset-tool@v0.1.0"`.
+- `pip` users can install the same ref with `pip install "benchcommons-tools-dataset @ git+https://github.com/BenchCommons/tools-dataset@v0.1.0"`.
 - A tag that points at a broken commit cannot be fixed in place; the fix is a new patch tag.

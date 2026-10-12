@@ -1,5 +1,5 @@
 [project]
-name = "benchcommons-dataset-tool"
+name = "benchcommons-tools-dataset"
 version = "0.1.0"
 description = "Shared tooling for BenchCommons dataset repos: source download cache, spreadsheet reader, adapter base and source registry"
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/BenchCommons/dataset-tool"
+Repository = "https://github.com/BenchCommons/tools-dataset"
 
 [dependency-groups]
 dev = ["pytest==9.1.1"]

@@ -129,7 +129,7 @@ All three use JSON Schema 2020-12, so consumers in any language can validate wit
   - `dataset-tool validate <dir>`: rules V1 to V10; V5 rebuilds from the upstream artifact in the same directory.
   - `dataset-tool vectors --check`: runs the implementation against `vectors/`.
 - **Layout:** `src/datasettool/{definition,population,sampling,formats,manifest,licensing,validate,cli}.py`, `tests/`, `schema/`, `vectors/`.
-- **Use from dataset repos:** pinned by tag, for example `uvx --from git+https://github.com/BenchCommons/dataset-tool@v0.1.0 dataset-tool build …`. A reusable release workflow comes in spec 002.
+- **Use from dataset repos:** pinned by tag, for example `uvx --from git+https://github.com/BenchCommons/tools-dataset@v0.1.0 dataset-tool build …`. A reusable release workflow comes in spec 002.
 - **Tests never use the network**, as in `dataset-names`.
 
 ## 10. Decisions

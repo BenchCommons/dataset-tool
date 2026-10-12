@@ -1,4 +1,4 @@
-# AGENTS.md — dataset-tool
+# AGENTS.md — tools-dataset
 
 Follow the org-wide rules in [BenchCommons/.github AGENTS.md](https://github.com/BenchCommons/.github/blob/main/AGENTS.md) and the decisions in [.product](https://github.com/BenchCommons/.product).
 
@@ -8,7 +8,7 @@ The shared tooling of the `dataset-*` repos: the source toolkit (spec 004) and, 
 
 ## Stack
 
-Python 3.12, `uv`, `pytest`, built with `hatchling`. Distribution `benchcommons-dataset-tool`, import package `datasettool` ([ADR 0003](docs/adr/0003-python-package-name.md)). Runtime dependencies pinned: `pyyaml==6.0.3`, `xlrd==2.0.2` ([ADR 0005](docs/adr/0005-source-toolkit-runtime-dependencies.md)); a new one needs an ADR.
+Python 3.12, `uv`, `pytest`, built with `hatchling`. Distribution `benchcommons-tools-dataset`, import package `datasettool` ([ADR 0003](docs/adr/0003-python-package-name.md)). Runtime dependencies pinned: `pyyaml==6.0.3`, `xlrd==2.0.2` ([ADR 0005](docs/adr/0005-source-toolkit-runtime-dependencies.md)); a new one needs an ADR.
 
 ## Commands
 

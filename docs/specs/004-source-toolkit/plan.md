@@ -5,7 +5,7 @@ Spec: [`spec.md`](spec.md). Tasks: [`tasks.md`](tasks.md). Origin of the ported 
 ## 1. Layout
 
 ```
-pyproject.toml                    benchcommons-dataset-tool 0.1.0, hatchling, pins (ADR 0003, 0005)
+pyproject.toml                    benchcommons-tools-dataset 0.1.0, hatchling, pins (ADR 0003, 0005)
 uv.lock, .python-version (3.12)
 LICENSE                           Apache-2.0, the same text as dataset-names
 src/datasettool/__init__.py       __version__ from the installed distribution
@@ -51,7 +51,7 @@ Generic records: the module docstring states the adapter protocol (`SOURCE_ID`, 
 ```python
 class FetchError(Exception)
 class BlockedError(FetchError)
-DEFAULT_USER_AGENT: str                       # "dataset-tool/<version> (+https://github.com/BenchCommons/dataset-tool)"
+DEFAULT_USER_AGENT: str                       # "tools-dataset/<version> (+https://github.com/BenchCommons/tools-dataset)"
 def make_user_agent(name: str, version: str, url: str) -> str   # "<name>/<version> (+<url>)"
 def cached_path(cache_dir: Path, source_id: str, filename: str) -> Path
 def fetch_resource(cache_dir, source_id, resource, *, refresh=False, offline=False, timeout=60.0,
@@ -148,21 +148,21 @@ New tests cover what is new in the toolkit: `optional` callables, the schema rul
 `.github/workflows/ci.yml` keeps the `docs` job and adds:
 
 - `tests`: `actions/checkout@v4`, `astral-sh/setup-uv@v6`, `uv sync --locked`, `uv run pytest -q`.
-- `install-from-git`: in an empty directory, `uv init --bare --python 3.12`, `uv add "benchcommons-dataset-tool @ git+https://github.com/<repo>@<head sha>"`, then `uv run python -c "import datasettool.files, datasettool.sources.adapters, …"`. On a pull request the head SHA is `github.event.pull_request.head.sha`; on a push, `github.sha`.
+- `install-from-git`: in an empty directory, `uv init --bare --python 3.12`, `uv add "benchcommons-tools-dataset @ git+https://github.com/<repo>@<head sha>"`, then `uv run python -c "import datasettool.files, datasettool.sources.adapters, …"`. On a pull request the head SHA is `github.event.pull_request.head.sha`; on a push, `github.sha`.
 
 ## 5. Release
 
 After the pull request merges, the maintainer tags the merge commit on `main`:
 
 ```sh
-git tag -s v0.1.0 <merge sha> -m "benchcommons-dataset-tool 0.1.0 (spec 004)"
+git tag -s v0.1.0 <merge sha> -m "benchcommons-tools-dataset 0.1.0 (spec 004)"
 git push origin v0.1.0
 ```
 
 and checks acceptance criterion 4 at the tag in an empty directory:
 
 ```sh
-uv init --bare --python 3.12 && uv add "benchcommons-dataset-tool @ git+https://github.com/BenchCommons/dataset-tool@v0.1.0"
+uv init --bare --python 3.12 && uv add "benchcommons-tools-dataset @ git+https://github.com/BenchCommons/tools-dataset@v0.1.0"
 uv run python -c "import datasettool.sources.cache, datasettool.sources.spreadsheet, datasettool.sources.adapters, datasettool.sources.registry, datasettool.files"
 ```
 
@@ -172,17 +172,18 @@ Issue #5 (dataset-names adoption) starts only after the tag exists.
 
 | # | Decision | Alternatives rejected | Reason |
 |---|---|---|---|
-| D1 | Distribution `benchcommons-dataset-tool`, import `datasettool` (ADR 0003) | `dataset-tool` / `dataset_tool` | Matches spec 001's `src/datasettool/`; org prefix avoids collisions. |
+| D1 | Distribution `benchcommons-tools-dataset`, import `datasettool` (ADR 0003) | `benchcommons-dataset-tool` (the pre-rename repo name), `dataset_tool` | Matches the repo name (.product ADR 0005) and spec 001's `src/datasettool/`; org prefix avoids collisions. |
 | D2 | uv git source pinned to a tag (ADR 0004) | PyPI, release wheels, vendoring | Reproducible through `uv.lock` with no publishing infrastructure. |
 | D3 | Accepted licences are per dataset, with a shared `ATTRIBUTION_ONLY_LICENSES` starting set (ADR 0006) | One org-wide list | Compatibility depends on each dataset's data licence; .product ADR 0003 is still proposed. |
 | D4 | Registry extension by `Field` list, cross-entry checks and a factory | Subclassing a base `Source`; JSON Schema | Keeps dataset-names' typed `Source` and its exact messages; no new dependency. |
 | D5 | Messages and identifiers translated to English | Keep Portuguese | This repo's language convention; vectors (inputs and expected values) stay identical. |
 | D6 | INE spreadsheet samples stay in dataset-names; the synthetic `tipos.xls` moves (as `types.xls`) | Copy the INE samples | They are adapter fixtures carrying CC BY 4.0 data with attribution; the reader is fully covered by synthetic files. |
 | D7 | `describe_files` refuses files without a registered counter | Count unknown files as CSV (dataset-names' fallback) | A generic tool cannot guess; a wrong row count would go unnoticed. |
-| D8 | No CLI in this spec | Port `fetch` | The CLIs differ per dataset; spec 001 owns the `dataset-tool` command. |
+| D8 | No CLI in this spec | Port `fetch` | The CLIs differ per dataset; spec 001 owns the CLI. |
 
 ## 7. Risks
 
 - **Translated messages break consumers that match text.** dataset-names tests match Portuguese messages; its adoption (issue #5) updates those assertions or keeps its own wrappers. The adoption spec in dataset-names decides.
 - **Spec 001 builds on the same package.** Its task T2 (project skeleton) is delivered here; 001 adds its dependencies through its own ADR when it starts.
+- **Overlap with `tools-commons`.** [.product ADR 0005](https://github.com/BenchCommons/.product/blob/main/docs/adr/0005-tools-prefix.md) creates `tools-commons` for code shared by several tools, and its scope issue ([tools-commons#1](https://github.com/BenchCommons/tools-commons/issues/1)) lists retry wrappers for flaky downloads. The toolkit stays here because its consumers are the `dataset-*` repos (ADR 0003); if `tools-benchmark` needs the download cache, moving it is a `tools-commons` spec, and this package then depends on it.
 - **GitHub fetch by SHA in CI.** The install job fetches the PR head commit by SHA from GitHub; if that ever fails, the fallback is a `git+file://` URL to the checkout, which still proves installability from git.

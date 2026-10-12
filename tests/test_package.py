@@ -10,7 +10,7 @@ PYPROJECT = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read
 
 
 def test_version_comes_from_the_distribution():
-    assert datasettool.__version__ == version("benchcommons-dataset-tool") == PYPROJECT["project"]["version"]
+    assert datasettool.__version__ == version("benchcommons-tools-dataset") == PYPROJECT["project"]["version"]
 
 
 def test_runtime_dependencies_are_pinned():

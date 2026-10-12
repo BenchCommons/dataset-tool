@@ -40,7 +40,7 @@ def test_default_user_agent_identifies_dataset_tool(server, tmp_path):
     fetch_resource(tmp_path, "exemplo", _resource(server))
     agent = server.requests[0][1]
     assert agent == DEFAULT_USER_AGENT
-    assert agent == f"dataset-tool/{datasettool.__version__} (+https://github.com/BenchCommons/dataset-tool)"
+    assert agent == f"tools-dataset/{datasettool.__version__} (+https://github.com/BenchCommons/tools-dataset)"
 
 
 def test_user_agent_identifies_the_dataset_and_its_repository(server, tmp_path):

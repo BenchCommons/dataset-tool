@@ -1,12 +1,12 @@
 # 004. The source toolkit
 
-Issue: [#4](https://github.com/BenchCommons/dataset-tool/issues/4). Roadmap: [`../ROADMAP.md`](../ROADMAP.md). Adoption by dataset-names: [#5](https://github.com/BenchCommons/dataset-tool/issues/5).
+Issue: [#4](https://github.com/BenchCommons/tools-dataset/issues/4). Roadmap: [`../ROADMAP.md`](../ROADMAP.md). Adoption by dataset-names: [#5](https://github.com/BenchCommons/tools-dataset/issues/5).
 
 ## Why
 
 Every `dataset-*` repo does the same three things before it can build anything: it downloads upstream files politely and reproducibly, it reads the formats institutes publish (CSV, XLS, XLSX), and it keeps a registry of its sources with their licences and attributions. `dataset-names` already does all three, with tests hardened over several reviews (its specs 002, 003, 003b and 003e, ADRs 0001 and 0005). `dataset-commons` and later datasets would otherwise copy that code and let the copies drift.
 
-Owner decision (2026-10-12): the generic parts move to `dataset-tool` as an installable Python package, the **source toolkit**; the names-specific parts (record types, output schema, the names manifest, the names licence list) stay in `dataset-names`. This spec defines the toolkit's behaviour and how dataset repos depend on it. `dataset-tool` owns this contract; dataset repos link to it and never redefine it.
+Owner decision (2026-10-12): the generic parts move to this repo (`tools-dataset`, formerly `dataset-tool`) as an installable Python package, the **source toolkit**; the names-specific parts (record types, output schema, the names manifest, the names licence list) stay in `dataset-names`. This spec defines the toolkit's behaviour and how dataset repos depend on it. `tools-dataset` owns this contract; dataset repos link to it and never redefine it.
 
 ## Terms
 
@@ -19,7 +19,7 @@ Owner decision (2026-10-12): the generic parts move to `dataset-tool` as an inst
 
 ### R1. Package
 
-- **R1.1** The toolkit is the Python distribution `benchcommons-dataset-tool`, import package `datasettool`, in this repo ([ADR 0003](../../adr/0003-python-package-name.md)). It needs Python 3.12 or later, is built with `hatchling` and developed with `uv` and `pytest`.
+- **R1.1** The toolkit is the Python distribution `benchcommons-tools-dataset`, import package `datasettool`, in this repo ([ADR 0003](../../adr/0003-python-package-name.md)). It needs Python 3.12 or later, is built with `hatchling` and developed with `uv` and `pytest`.
 - **R1.2** The toolkit modules are `datasettool.sources.cache` (R2), `datasettool.sources.spreadsheet` (R3), `datasettool.sources.adapters` (R4), `datasettool.sources.registry` (R5) and `datasettool.files` (R6).
 - **R1.3** Versions follow SemVer and are released as git tags `vX.Y.Z` of this repo. The first release of this spec is `v0.1.0`. While the major version is 0, a minor bump may break the API; dataset repos pin an exact tag.
 - **R1.4** Dataset repos depend on the package through a `uv` git source pinned to a tag ([ADR 0004](../../adr/0004-dataset-repos-depend-on-a-git-tag.md)). The package is not published to PyPI.
@@ -32,7 +32,7 @@ Ported from `dataset-names` spec 002 R4, spec 003 R4 (403 hint) and spec 003e R4
 
 - **R2.1** A resource is cached at `<cache>/<source_id>/<filename>`, with `<filename>.meta.json` next to it holding `url`, `downloaded_at` (ISO 8601 with time zone, seconds), `sha256` and `size`.
 - **R2.2** Without refresh, a file present in the cache is returned without any request. With refresh, it is downloaded again. With offline, no request is made and a missing file is a `FetchError` naming the path. Offline and refresh together are a `ValueError`.
-- **R2.3** Every request sends a `User-Agent`. The default identifies `dataset-tool`, its version and this repo's URL; a dataset passes its own (name, version and repo URL) so upstream operators know who is downloading.
+- **R2.3** Every request sends a `User-Agent`. The default identifies `tools-dataset`, its version and this repo's URL; a dataset passes its own (name, version and repo URL) so upstream operators know who is downloading.
 - **R2.4** A download has a timeout and up to three attempts by default, waiting 2 s, then 4 s (doubling). A 4xx response is final and is not retried, except 408 and 429. The number of attempts, the first wait and the sleep function are parameters; fewer than one attempt is a `ValueError`.
 - **R2.5** A partial download never enters the cache: bytes go to `<filename>.part` and are renamed only when complete. A `Content-Length` that is malformed or differs from the bytes received is a `FetchError`. The old `.meta.json` is removed before the new file is renamed into place, so a failure in between leaves a file without metadata, never metadata describing another file. A failed refresh keeps the previous version.
 - **R2.6** A `Content-Type` of `text/html` for a resource whose file name does not end in `.html` or `.htm` is a `BlockedError` (a subclass of `FetchError`): nothing is cached, there is no retry, and the message names the URL and the exact cache path where to save a file downloaded with a browser, then rerun offline.
@@ -96,7 +96,7 @@ The CI workflow keeps the org docs job and adds a Python job that runs `uv sync 
 3. A registry schema built only from the public API, with the fields and rules of `dataset-names` (`country`, `count_type`, `primary`, `suppression`, `uniform_case`, one primary per country and count type), passes the ported `dataset-names` registry tests.
 4. In a fresh `uv` project, the package installs from a git URL of this repo pinned to a ref, and every module imports. The CI job proves it at the commit under test; after merge, the same command at tag `v0.1.0` proves it for the release.
 5. The CI workflow runs the docs job and the Python jobs, and all pass on the pull request of this spec.
-6. Issue [#5](https://github.com/BenchCommons/dataset-tool/issues/5) tracks the adoption by `dataset-names`.
+6. Issue [#5](https://github.com/BenchCommons/tools-dataset/issues/5) tracks the adoption by `dataset-names`.
 
 ## Out of scope
 

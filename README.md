@@ -1,4 +1,4 @@
-# dataset-tool
+# tools-dataset
 
 Builds, validates and exports BenchCommons datasets and delivers pinned inputs to the catalogs and benchmark-tool.
 
@@ -8,10 +8,10 @@ This repo owns the **input contract** for every `dataset-*` repo (see [CONTRACTS
 
 ```toml
 [project]
-dependencies = ["benchcommons-dataset-tool==0.1.0"]
+dependencies = ["benchcommons-tools-dataset==0.1.0"]
 
 [tool.uv.sources]
-benchcommons-dataset-tool = { git = "https://github.com/BenchCommons/dataset-tool", tag = "v0.1.0" }
+benchcommons-tools-dataset = { git = "https://github.com/BenchCommons/tools-dataset", tag = "v0.1.0" }
 ```
 
 ```python

@@ -1,6 +1,6 @@
 # 001. The input contract
 
-Issue: [#1](https://github.com/BenchCommons/dataset-tool/issues/1). Org contract index: [.product CONTRACTS.md](https://github.com/BenchCommons/.product/blob/main/CONTRACTS.md), row "Benchmark inputs". Roadmap: [`../ROADMAP.md`](../ROADMAP.md).
+Issue: [#1](https://github.com/BenchCommons/tools-dataset/issues/1). Org contract index: [.product CONTRACTS.md](https://github.com/BenchCommons/.product/blob/main/CONTRACTS.md), row "Benchmark inputs". Roadmap: [`../ROADMAP.md`](../ROADMAP.md).
 
 ## Why
 

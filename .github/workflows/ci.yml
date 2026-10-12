@@ -37,5 +37,5 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/consumer" && cd "$RUNNER_TEMP/consumer"
           uv init --bare --python 3.12
-          uv add "benchcommons-dataset-tool @ git+$REPO@$REF"
+          uv add "benchcommons-tools-dataset @ git+$REPO@$REF"
           uv run python -c "import datasettool, datasettool.sources; print(datasettool.__version__)"

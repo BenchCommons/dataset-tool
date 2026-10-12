@@ -28,7 +28,7 @@ def make_user_agent(name: str, version: str, url: str) -> str:
     return f"{name}/{version} (+{url})"
 
 
-DEFAULT_USER_AGENT = make_user_agent("dataset-tool", __version__, REPOSITORY)
+DEFAULT_USER_AGENT = make_user_agent("tools-dataset", __version__, REPOSITORY)
 
 
 class FetchError(Exception):
