@@ -1,0 +1,16 @@
+# 001. The input contract: tasks
+
+Spec: [`spec.md`](spec.md). Plan: [`plan.md`](plan.md). Each task ends with tests passing and is one pull request or less.
+
+- [ ] **T1. ADRs.** Write `docs/adr/0001-inputs-in-dataset-releases.md` (plan D1) and `docs/adr/0002-hash-based-sampling.md` (plan D2). Done when both are reviewed.
+- [ ] **T2. Project skeleton.** `pyproject.toml` (Python 3.12, `uv`, `pytest`, `hatchling`), `src/datasettool/`, `tests/`, CI running `uv run pytest -q`. Update `AGENTS.md` with stack and commands. Test: an empty test suite runs in CI.
+- [ ] **T3. JSON Schemas.** `schema/inputs-definition.schema.json`, `schema/input-manifest.schema.json`, `schema/input-reference.schema.json` (plan section 7). Tests: valid and invalid fixtures for each schema, including bad size names, bad checksums and a `lines` record with two fields.
+- [ ] **T4. Formats.** `formats.py`: writers and checkers for `lines` and `csv` (spec R4). Tests: BOM, CRLF, missing or double trailing LF, non-NFC, control characters, surrounding whitespace, CSV quoting of commas and quotes, integer and decimal rendering. Each rejection names the rule.
+- [ ] **T5. Population.** `definition.py` and `population.py`: read `inputs.yaml`, verify the upstream checksum against the dataset manifest, filter, project, check, deduplicate, sort, compute `population.sha256` and `scripts` (plan section 3). Tests: fixture subset of `given_names.csv` with Latin, Cyrillic, Han names and a name with a space; build fails on an invalid value.
+- [ ] **T6. Sampling and vectors.** `sampling.py` with `hash-order` and `hash-index` (plan section 4); generate `vectors/` and document them in `vectors/README.md`. Tests: vectors reproduced exactly, nesting for both methods, `hash-order` rejects sizes above the population, `hash-order` samples have no duplicates.
+- [ ] **T7. Licensing.** `licensing.py`: SPDX mapping table, `attribution` from contributing sources, `notices`, `DATA_LICENSE` and `ATTRIBUTION.txt` generation (plan section 6). Tests: `dataset-names`-shaped `sources.yaml` fixture including the Statistics Canada entry; unknown license id fails; non-contributing sources are left out.
+- [ ] **T8. Manifest and `build`.** `manifest.py` and `dataset-tool build` writing samples, input manifests and `SHA256SUMS` (plan section 5). Tests: two builds produce identical bytes; output validates against the manifest schema; `sha256sum -c SHA256SUMS` passes in CI.
+- [ ] **T9. `validate`.** Rules V1 to V10 (spec R8). Tests: one failing fixture per rule (acceptance criterion 4), plus a clean fixture that passes.
+- [ ] **T10. Cross-platform determinism.** CI matrix on Linux and macOS builds the fixture and compares checksums with committed expected values (acceptance criterion 3).
+- [ ] **T11. Fetch recipe.** Document in `README.md` the `curl` + `sha256sum` recipe of spec R7 and test it in CI against a fixture release asset in this repo; a tampered file must fail (acceptance criterion 6).
+- [ ] **T12. Contract index.** PR in `.product` linking `CONTRACTS.md` "Benchmark inputs" to this spec and to `schema/input-reference.schema.json`; comment on benchmark-tool#29, dataset-names#24 and dataset-commons#1 with the link (acceptance criterion 7).
