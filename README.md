@@ -1,6 +1,6 @@
-# dataset-tool
+# tools-dataset
 
-Builds, validates and exports BenchCommons datasets and delivers pinned inputs to the catalogs and benchmark-tool.
+Builds, validates and exports BenchCommons datasets and delivers pinned inputs to the catalogs and tools-benchmark.
 
 This repo owns the **input contract** for every `dataset-*` repo (see [CONTRACTS.md](https://github.com/BenchCommons/.product/blob/main/CONTRACTS.md)).
 
