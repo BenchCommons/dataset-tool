@@ -65,6 +65,7 @@ def check_adapter(mod: object, source_id: str, optional: Iterable[str] = ()) -> 
 
     `optional` names extra functions the dataset's own protocol allows; each is checked only when present.
     """
+    optional = _names(optional)
     for attribute in ("SOURCE_ID", "RESOURCES", "parse"):
         if not hasattr(mod, attribute):
             raise AdapterError(f"adapter '{source_id}' has no {attribute}")
@@ -91,6 +92,12 @@ def check_adapter(mod: object, source_id: str, optional: Iterable[str] = ()) -> 
             raise AdapterError(f"'{source_id}': {name} must be a function")
 
 
+def _names(optional: Iterable[str]) -> tuple[str, ...]:
+    if isinstance(optional, (str, bytes)):
+        raise TypeError("optional must be a collection of names, not a string")
+    return tuple(optional)
+
+
 def _expected_path(package: str, module: str) -> str:
     try:
         spec = importlib.util.find_spec(package)
@@ -107,6 +114,7 @@ def load_adapter(source_id: str, package: str, optional: Iterable[str] = ()) -> 
     A module that does not exist is reported as absent, with the expected path; a module that exists
     but fails to import (even because it imports something missing) is reported as broken.
     """
+    optional = _names(optional)
     name = f"{package}.{module_name(source_id)}"
     try:
         mod = importlib.import_module(name)

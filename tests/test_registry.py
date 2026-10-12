@@ -340,3 +340,33 @@ def test_cross_checks_see_only_valid_entries_and_all_errors_are_reported():
         parse_registry([generic(), generic(id="bad", license="ODbL-1.0")], schema)
     assert seen == [["wordnet"]]
     assert str(e.value).splitlines() == ["bad: license 'ODbL-1.0' is not accepted (x)", "cross-entry problem"]
+
+
+# Collections passed as a single string (review of PR #7) -------------------------------------------
+
+def test_license_list_given_as_a_string_is_refused():
+    # A str would make the licence check a substring test: "BY" in "CC-BY-4.0".
+    with pytest.raises(TypeError, match="accepted_licenses"):
+        RegistrySchema(accepted_licenses="CC-BY-4.0", license_policy="x")
+
+
+@pytest.mark.parametrize("name, value", [("fields", "country"), ("checks", "one_primary")])
+def test_fields_and_checks_given_as_a_string_are_refused(name, value):
+    with pytest.raises(TypeError, match=name):
+        RegistrySchema(accepted_licenses=ATTRIBUTION_ONLY_LICENSES, license_policy="x", **{name: value})
+
+
+def test_schema_collections_are_coerced():
+    schema = RegistrySchema(accepted_licenses=["CC-BY-4.0"], license_policy="x", fields=[Field("language")],
+                            checks=[lambda sources: []])
+    assert schema.accepted_licenses == frozenset({"CC-BY-4.0"})
+    assert isinstance(schema.fields, tuple) and isinstance(schema.checks, tuple)
+    with pytest.raises(RegistryError, match="license 'BY' is not accepted"):
+        parse_registry([generic(license="BY", language="en")], schema)
+
+
+def test_field_and_check_types_are_checked():
+    with pytest.raises(TypeError, match="Field"):
+        RegistrySchema(accepted_licenses=ATTRIBUTION_ONLY_LICENSES, license_policy="x", fields=("country",))
+    with pytest.raises(TypeError, match="callable"):
+        RegistrySchema(accepted_licenses=ATTRIBUTION_ONLY_LICENSES, license_policy="x", checks=(3,))

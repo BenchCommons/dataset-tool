@@ -187,3 +187,11 @@ def test_load_adapter_applies_optional_checks(tmp_path, monkeypatch):
     finally:
         for name in ("com_links", "com_links.fonte"):
             sys.modules.pop(name, None)
+
+
+def test_optional_given_as_a_string_is_refused():
+    # A str would be iterated character by character: "links" -> "l", "i", ...
+    with pytest.raises(TypeError, match="optional"):
+        check_adapter(_adapter(links=None), "x", optional="links")
+    with pytest.raises(TypeError, match="optional"):
+        load_adapter("exemplo", "example_adapters", optional="links")

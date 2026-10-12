@@ -74,6 +74,19 @@ class RegistrySchema(Generic[S]):
     factory: Callable[[dict[str, Any]], S] = Source.from_entry
 
     def __post_init__(self):
+        # A str is iterable: as a licence list it would turn the check into a substring test.
+        for name in ("accepted_licenses", "fields", "checks"):
+            if isinstance(getattr(self, name), (str, bytes)):
+                raise TypeError(f"{name} must be a collection, not a string")
+        object.__setattr__(self, "accepted_licenses", frozenset(self.accepted_licenses))
+        object.__setattr__(self, "fields", tuple(self.fields))
+        object.__setattr__(self, "checks", tuple(self.checks))
+        for f in self.fields:
+            if not isinstance(f, Field):
+                raise TypeError(f"fields must contain Field, got {f!r}")
+        for c in self.checks:
+            if not callable(c):
+                raise TypeError(f"checks must contain callables, got {c!r}")
         if not self.accepted_licenses:
             raise ValueError("a registry schema needs a non-empty accepted_licenses list (ADR 0006)")
         seen: set[str] = set()
