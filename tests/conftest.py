@@ -3,12 +3,51 @@
 Ported from BenchCommons/dataset-names@e7e8405 tests/conftest.py (ServidorLocal).
 """
 
+import socket
 import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+
+_LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+
+
+class NetworkAccessError(RuntimeError):
+    """A test tried to reach a host other than the loopback (spec 004, R7.3)."""
+
+
+def _host(address) -> str:
+    return address[0] if isinstance(address, tuple) else str(address)
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Refuse every connection and name lookup outside the loopback, in every test."""
+    connect, connect_ex, getaddrinfo = socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo
+
+    def guard(address):
+        # str or bytes addresses are AF_UNIX sockets, local by definition.
+        if not isinstance(address, (str, bytes)) and _host(address) not in _LOOPBACK:
+            raise NetworkAccessError(f"network access attempted: {address!r}")
+
+    def guarded_connect(self, address):
+        guard(address)
+        return connect(self, address)
+
+    def guarded_connect_ex(self, address):
+        guard(address)
+        return connect_ex(self, address)
+
+    def guarded_getaddrinfo(host, *args, **kwargs):
+        if host is not None and (host.decode() if isinstance(host, bytes) else host) not in _LOOPBACK:
+            raise NetworkAccessError(f"name lookup attempted: {host!r}")
+        return getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
+    monkeypatch.setattr(socket, "getaddrinfo", guarded_getaddrinfo)
 
 
 class LocalServer:

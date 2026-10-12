@@ -45,7 +45,10 @@ class Field:
 
 @dataclass(frozen=True)
 class Source:
-    """Source built by the default factory; dataset fields are in `extra`, read-only."""
+    """Source built by the default factory; dataset fields are in `extra`, read-only.
+
+    Hashable: `extra` (a MappingProxyType, which is unhashable) takes part in equality but not in the hash.
+    """
 
     id: str
     name: str
@@ -54,7 +57,7 @@ class Source:
     attribution: str
     retrieved: date
     adapter: bool = True
-    extra: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    extra: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}), hash=False)
 
     @classmethod
     def from_entry(cls, entry: dict[str, Any]) -> "Source":

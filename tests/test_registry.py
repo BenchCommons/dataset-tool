@@ -370,3 +370,12 @@ def test_field_and_check_types_are_checked():
         RegistrySchema(accepted_licenses=ATTRIBUTION_ONLY_LICENSES, license_policy="x", fields=("country",))
     with pytest.raises(TypeError, match="callable"):
         RegistrySchema(accepted_licenses=ATTRIBUTION_ONLY_LICENSES, license_policy="x", checks=(3,))
+
+
+def test_default_source_is_hashable():
+    # extra is a read-only MappingProxyType (unhashable); it is left out of the hash, not of equality.
+    schema = RegistrySchema(accepted_licenses=ATTRIBUTION_ONLY_LICENSES, license_policy="x", fields=(Field("language"),))
+    a = parse_registry([generic(language="en")], schema)["wordnet"]
+    b = parse_registry([generic(language="pt")], schema)["wordnet"]
+    assert len({a, a}) == 1
+    assert a != b and len({a, b}) == 2
