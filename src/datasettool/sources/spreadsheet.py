@@ -3,7 +3,8 @@
 The format is detected from the first bytes. XLSX is streamed with the standard library;
 XLS is read with xlrd. Both return values of the same types: str, int, float, bool or None.
 
-Ported from BenchCommons/dataset-names@e7e8405 src/namescommons/spreadsheet.py.
+Ported from BenchCommons/dataset-names@e7e8405 src/namescommons/spreadsheet.py, with the encoding
+and expat-level DTD guards of BenchCommons/dataset-names@eaaa4d1 (PR #39).
 """
 
 import codecs
@@ -13,6 +14,7 @@ import re
 import xml.etree.ElementTree as ET
 import xml.parsers.expat as expat
 import zipfile
+import zlib
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
@@ -127,7 +129,15 @@ def _member(z: zipfile.ZipFile, name: str, path: Path):
     if size > _MIN_BYTES_RATIO and size / compressed > _MAX_RATIO:
         raise FormatError(f"{path.name}: member {name} inflates to {size} bytes, "
                           f"compression ratio {size // compressed}:1 above {_MAX_RATIO}:1")
-    return _NoDtd(z.open(info), name, path)
+    try:
+        fh = z.open(info)
+    except _CORRUPT as e:
+        raise FormatError(f"{path.name}: member {name} is corrupt: {e}") from None
+    return _NoDtd(fh, name, path)
+
+
+# What zipfile raises on a damaged member while reading it: bad CRC, bad deflate data, truncation.
+_CORRUPT = (zipfile.BadZipFile, zlib.error, EOFError)
 
 
 class _NoDtd(io.RawIOBase):
@@ -140,9 +150,14 @@ class _NoDtd(io.RawIOBase):
     def __init__(self, fh, name: str, path: Path):
         super().__init__()
         self._fh = fh
+        self._where = f"{path.name}: member {name}"
         prefix = b""
         while True:
-            part = fh.read(4096)
+            try:
+                part = fh.read(4096)
+            except _CORRUPT as e:
+                fh.close()
+                raise FormatError(f"{self._where} is corrupt: {e}") from None
             prefix += part
             try:
                 decision = _prologue(prefix, f"{path.name}: member {name}")
@@ -168,7 +183,10 @@ class _NoDtd(io.RawIOBase):
             buf[:n] = self._prefix[:n]
             self._prefix = self._prefix[n:]
             return n
-        return self._fh.readinto(buf)
+        try:
+            return self._fh.readinto(buf)
+        except _CORRUPT as e:
+            raise FormatError(f"{self._where} is corrupt: {e}") from None
 
     def close(self) -> None:
         self._fh.close()

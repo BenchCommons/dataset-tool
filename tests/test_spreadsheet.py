@@ -496,3 +496,46 @@ def test_the_parser_refuses_a_dtd_even_without_the_prescan(tmp_path, monkeypatch
         f = _rewrite(base, tmp_path / "a.xlsx", member, f'<?xml version="1.0"?>{dtd}{ROOTS[member]}')
         with pytest.raises(FormatError, match=rf"a\.xlsx: member {member} has a DTD"):
             operation(f)
+
+
+# Corrupt ZIP members become FormatError (review of PR #7) ------------------------------------------
+
+def _corrupt(path: Path, old: bytes, new: bytes) -> Path:
+    data = path.read_bytes()
+    assert data.count(old) == 1
+    path.write_bytes(data.replace(old, new))
+    return path
+
+
+def _stored_xlsx(path: Path) -> Path:
+    src = _xlsx(path.with_name("deflated.xlsx"), [("X", '<row r="1"><c r="A1"><v>12345</v></c></row>')])
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(path, "w", zipfile.ZIP_STORED) as zout:
+        for info in zin.infolist():
+            zout.writestr(info.filename, zin.read(info.filename))
+    return path
+
+
+def test_bad_crc_in_a_sheet_is_a_format_error(tmp_path):
+    f = _corrupt(_stored_xlsx(tmp_path / "a.xlsx"), b"<v>12345</v>", b"<v>54321</v>")
+    with pytest.raises(FormatError, match=r"a\.xlsx: member xl/worksheets/sheet1\.xml is corrupt: .*CRC"):
+        list(rows(f, "X"))
+
+
+def test_bad_crc_in_the_workbook_is_a_format_error(tmp_path):
+    f = _corrupt(_stored_xlsx(tmp_path / "a.xlsx"), b'sheetId="1"', b'sheetId="2"')
+    with pytest.raises(FormatError, match=r"a\.xlsx: member xl/workbook\.xml is corrupt"):
+        sheet_names(f)
+
+
+def test_corrupt_deflate_stream_is_a_format_error(tmp_path):
+    padding = "".join(f'<row r="{i}"><c r="A{i}"><v>{i * 7919 % 100003}</v></c></row>' for i in range(1, 3000))
+    f = _xlsx(tmp_path / "a.xlsx", [("X", padding)])
+    with zipfile.ZipFile(f) as z:
+        info = z.getinfo("xl/worksheets/sheet1.xml")
+        start = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
+    data = bytearray(f.read_bytes())
+    for k in range(start + 50, start + 250):
+        data[k] ^= 0xFF
+    f.write_bytes(bytes(data))
+    with pytest.raises(FormatError, match=r"a\.xlsx: member xl/worksheets/sheet1\.xml is corrupt"):
+        list(rows(f, "X"))
