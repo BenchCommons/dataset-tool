@@ -19,7 +19,7 @@ Owner decision (2026-10-12): the generic parts move to this repo (`tools-dataset
 
 ### R1. Package
 
-- **R1.1** The toolkit is the Python distribution `benchcommons-tools-dataset`, import package `datasettool`, in this repo ([ADR 0003](../../adr/0003-python-package-name.md)). It needs Python 3.12 or later, is built with `hatchling` and developed with `uv` and `pytest`.
+- **R1.1** The toolkit is the Python distribution `benchcommons-tools-dataset`, import package `datasettool`, in this repo ([ADR 0003](../../adr/0003-python-package-name.md); placement: [ADR 0007](../../adr/0007-source-toolkit-lives-in-tools-dataset.md)). It needs Python 3.12 or later, is built with `hatchling` and developed with `uv` and `pytest`.
 - **R1.2** The toolkit modules are `datasettool.sources.cache` (R2), `datasettool.sources.spreadsheet` (R3), `datasettool.sources.adapters` (R4), `datasettool.sources.registry` (R5) and `datasettool.files` (R6).
 - **R1.3** Versions follow SemVer and are released as git tags `vX.Y.Z` of this repo. The first release of this spec is `v0.1.0`. While the major version is 0, a minor bump may break the API; dataset repos pin an exact tag.
 - **R1.4** Dataset repos depend on the package through a `uv` git source pinned to a tag ([ADR 0004](../../adr/0004-dataset-repos-depend-on-a-git-tag.md)). The package is not published to PyPI.

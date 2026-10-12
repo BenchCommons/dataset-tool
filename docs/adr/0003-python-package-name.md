@@ -10,7 +10,7 @@ Spec 004 makes this repo an installable Python package, first for the source too
 
 This repo was renamed from `dataset-tool` to `tools-dataset` by [.product ADR 0005](https://github.com/BenchCommons/.product/blob/main/docs/adr/0005-tools-prefix.md). A bare `tools-dataset` is generic enough that an unrelated project on PyPI may hold it, and a git dependency still declares a distribution name that must not collide with anything a dataset repo also installs. Import names cannot contain `-`.
 
-The same ADR creates `tools-commons` for code shared by several tools (`tools-benchmark`, `tools-dataset`). The source toolkit is shared by the `dataset-*` repos, inside the dataset domain this repo owns, so it belongs here; a piece that `tools-benchmark` also needs (for example a generic retrying download) would move to `tools-commons` by its own spec.
+Where the toolkit lives (here rather than in `tools-commons`) is [ADR 0007](0007-source-toolkit-lives-in-tools-dataset.md).
 
 ## Decision
 

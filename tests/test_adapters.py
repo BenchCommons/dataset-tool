@@ -30,22 +30,22 @@ def test_module_name():
 
 
 def test_loads_the_example_adapter():
-    mod = load_adapter("exemplo", "example_adapters")
-    assert mod.SOURCE_ID == "exemplo"
-    assert [r.filename for r in mod.RESOURCES] == ["primeiros.csv", "sobrenomes.csv"]
+    mod = load_adapter("example", "example_adapters")
+    assert mod.SOURCE_ID == "example"
+    assert [r.filename for r in mod.RESOURCES] == ["given.csv", "family.csv"]
 
 
 def test_dataset_defines_its_own_record_type(tmp_path):
-    mod = load_adapter("exemplo", "example_adapters")
-    (tmp_path / "primeiros.csv").write_text("nome\nMARIA\n", encoding="utf-8")
-    (tmp_path / "sobrenomes.csv").write_text("nome\nSILVA\n", encoding="utf-8")
+    mod = load_adapter("example", "example_adapters")
+    (tmp_path / "given.csv").write_text("name\nMARIA\n", encoding="utf-8")
+    (tmp_path / "family.csv").write_text("name\nSILVA\n", encoding="utf-8")
     files = SourceFiles({r.filename: tmp_path / r.filename for r in mod.RESOURCES})
     assert list(mod.parse(files)) == [mod.Row("MARIA", "given"), mod.Row("SILVA", "family")]
 
 
 def test_missing_adapter():
-    with pytest.raises(AdapterError, match="example_adapters.nao_existe"):
-        load_adapter("nao-existe", "example_adapters")
+    with pytest.raises(AdapterError, match="example_adapters.missing_adapter"):
+        load_adapter("missing-adapter", "example_adapters")
 
 
 def test_valid_adapter():
@@ -141,10 +141,10 @@ def test_file_outside_resources_lists_the_available_ones():
 
 def test_missing_adapter_shows_the_expected_path():
     with pytest.raises(AdapterError) as e:
-        load_adapter("nao-existe", "example_adapters")
+        load_adapter("missing-adapter", "example_adapters")
     message = str(e.value)
-    assert "adapter example_adapters.nao_existe absent" in message
-    assert str(Path(__file__).parent / "example_adapters" / "nao_existe.py") in message
+    assert "adapter example_adapters.missing_adapter absent" in message
+    assert str(Path(__file__).parent / "example_adapters" / "missing_adapter.py") in message
 
 
 def test_broken_adapter_is_not_reported_as_absent(tmp_path, monkeypatch):
@@ -194,4 +194,4 @@ def test_optional_given_as_a_string_is_refused():
     with pytest.raises(TypeError, match="optional"):
         check_adapter(_adapter(links=None), "x", optional="links")
     with pytest.raises(TypeError, match="optional"):
-        load_adapter("exemplo", "example_adapters", optional="links")
+        load_adapter("example", "example_adapters", optional="links")
