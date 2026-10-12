@@ -81,7 +81,7 @@ Ported from the generic part of `dataset-names` `src/namescommons/manifest.py` (
 
 ### R7. Faithful port
 
-- **R7.1** Each test of `dataset-names` that exercises a ported behaviour is ported with its inputs and expected values unchanged (test vectors), at `dataset-names@e7e8405`. Only the language of messages and identifiers changes. Tests that depend on names-specific code (record types, the names pipeline, the INE adapter samples) stay in `dataset-names`.
+- **R7.1** Each test of `dataset-names` that exercises a ported behaviour is ported with its inputs and expected values unchanged (test vectors), at `dataset-names@e7e8405` (the spreadsheet reader at `eaaa4d1`, its PR #39). Only the language of messages and identifiers changes. Tests that depend on names-specific code (record types, the names pipeline, the INE adapter samples) stay in `dataset-names`.
 - **R7.2** Each commit that ports a module names its origin, for example `ported from BenchCommons/dataset-names@e7e8405 src/namescommons/cache.py`. Both repos' code is Apache-2.0, and this repo carries the Apache-2.0 `LICENSE`.
 - **R7.3** Tests never use the network: downloads are tested against an HTTP server on `127.0.0.1` started by the tests.
 

@@ -68,7 +68,7 @@ def rows(path, sheet) -> Iterator[tuple[int, list]]
 def cell_count(value, missing: Iterable[str] = (), field: str = "count") -> int | None
 ```
 
-A straight port of `namescommons.spreadsheet`, limits unchanged (`_MAX_MEMBER` 1 GiB, ratio 100:1 above 1 MiB, prologue 64 KiB, 16,384 columns). Private names are translated; the tests that monkeypatch `_MAX_MEMBER` and `ET.iterparse` follow the new names.
+A straight port of `namescommons.spreadsheet` at `dataset-names@eaaa4d1` (PR #39, which adds the UTF-8/UTF-16 encoding guard and the expat-level DTD refusal through `xml.parsers.expat` and `ElementTree.TreeBuilder`), limits unchanged (`_MAX_MEMBER` 1 GiB, ratio 100:1 above 1 MiB, prologue 64 KiB, 16,384 columns). Private names are translated; the tests that monkeypatch `_MAX_MEMBER`, `_events` and `_prologue` follow the new names.
 
 ### 2.4 `datasettool.sources.registry`
 
@@ -133,7 +133,7 @@ Tests are ported with their inputs and expected values unchanged (spec R7.1). Na
 | dataset-names test file | Ported to | Not ported (stays in dataset-names) |
 |---|---|---|
 | `tests/test_cache.py` (all 22 tests) | `tests/test_cache.py`; the User-Agent test checks the default and the explicit dataset-names header | none |
-| `tests/test_spreadsheet.py` | `tests/test_spreadsheet.py`, all tests | `test_r1_3_amostras_do_ine` (INE adapter samples, CC BY 4.0 data of dataset-names) |
+| `tests/test_spreadsheet.py` (at `eaaa4d1`, PR #39) | `tests/test_spreadsheet.py`, all tests | `test_r1_3_amostras_do_ine` (INE adapter samples, CC BY 4.0 data of dataset-names) |
 | `tests/test_adapters.py` | `tests/test_adapters.py`: module name, valid adapter, the 15 invalid-adapter cases, missing attribute, loading a test adapter, absent adapter | `test_parse_da_fixture_sem_rede` (uses `RawRecord`), `test_pacote_padrao_ainda_nao_tem_adaptadores` (names default package) |
 | `tests/test_contrato_adaptador.py` | `parse_count`, `parse_code`, `SourceFiles`, absent adapter path, broken adapter, missing package | R2.1, R2.3, R2.5 and the ingest test (names pipeline) |
 | `tests/test_sources.py`, `tests/test_sources_extensoes.py` (all) | `tests/test_registry.py` through `tests/names_registry.py` | none |
