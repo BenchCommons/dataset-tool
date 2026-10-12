@@ -248,3 +248,37 @@ def test_csv_served_as_text_csv_is_still_accepted(server, tmp_path):
     resource = _resource(server)
     server.content_types["/a.csv"] = "text/csv; charset=utf-8"
     assert fetch_resource(tmp_path, "exemplo", resource).read_bytes() == BODY
+
+
+# Path traversal (review of PR #7): source ids and file names never leave the cache --------------
+
+@pytest.mark.parametrize("source_id", ["..", "../x", "a/b", "", ".", "Us-Ssa", "us_ssa", "/etc"])
+def test_invalid_source_id_is_refused(tmp_path, source_id):
+    with pytest.raises(ValueError, match="source id"):
+        cached_path(tmp_path, source_id, "a.csv")
+
+
+@pytest.mark.parametrize("filename", ["/etc/passwd", "../secret", "a/b.csv", "..", ".hidden", "a.csv.part",
+                                      "a.csv.meta.json", "", "a\\b.csv", "a\x00.csv"])
+def test_invalid_filename_is_refused(tmp_path, filename):
+    with pytest.raises(ValueError, match="file name"):
+        cached_path(tmp_path, "src", filename)
+
+
+def test_offline_fetch_cannot_read_outside_the_cache(server, tmp_path):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (tmp_path / "secret").write_text("x", encoding="utf-8")
+    with pytest.raises(ValueError):
+        fetch_resource(cache, "..", Resource(server.url("/secret"), "secret"), offline=True)
+    assert server.requests == []
+
+
+def test_symlinked_source_directory_leaving_the_cache_is_refused(tmp_path):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (cache / "src").symlink_to(outside)
+    with pytest.raises(ValueError, match="outside the cache"):
+        cached_path(cache, "src", "a.csv")

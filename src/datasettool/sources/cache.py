@@ -17,7 +17,7 @@ from http.client import HTTPException
 from pathlib import Path
 
 from datasettool import REPOSITORY, __version__
-from datasettool.sources.adapters import Resource
+from datasettool.sources.adapters import ID_PATTERN, Resource, is_safe_filename
 
 BLOCK = 1 << 16
 BACKOFF = 2.0  # seconds before the second attempt; doubles at each new attempt
@@ -43,7 +43,16 @@ _PAGES = (".html", ".htm")
 
 
 def cached_path(cache_dir: Path, source_id: str, filename: str) -> Path:
-    return Path(cache_dir) / source_id / filename
+    """<cache_dir>/<source_id>/<filename>; ValueError unless both parts are safe and the path stays in the cache."""
+    if not isinstance(source_id, str) or not ID_PATTERN.fullmatch(source_id):
+        raise ValueError(f"invalid source id {source_id!r} (use [a-z0-9]+(-[a-z0-9]+)*)")
+    if not is_safe_filename(filename):
+        raise ValueError(f"invalid file name {filename!r} for the cache")
+    root = Path(cache_dir)
+    path = root / source_id / filename
+    if not path.resolve().is_relative_to(root.resolve()):
+        raise ValueError(f"{path} resolves outside the cache {root}")
+    return path
 
 
 def _write_atomic(dest: Path, content: bytes) -> None:

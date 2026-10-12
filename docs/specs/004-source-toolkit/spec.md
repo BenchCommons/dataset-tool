@@ -30,7 +30,7 @@ Owner decision (2026-10-12): the generic parts move to this repo (`tools-dataset
 
 Ported from `dataset-names` spec 002 R4, spec 003 R4 (403 hint) and spec 003e R4.1.
 
-- **R2.1** A resource is cached at `<cache>/<source_id>/<filename>`, with `<filename>.meta.json` next to it holding `url`, `downloaded_at` (ISO 8601 with time zone, seconds), `sha256` and `size`.
+- **R2.1** A resource is cached at `<cache>/<source_id>/<filename>`, with `<filename>.meta.json` next to it holding `url`, `downloaded_at` (ISO 8601 with time zone, seconds), `sha256` and `size`. A source id outside the registry id format (R5.3), a file name that fails the R4.2 rule, or a path that resolves outside the cache directory is a `ValueError` before any file access or request.
 - **R2.2** Without refresh, a file present in the cache is returned without any request. With refresh, it is downloaded again. With offline, no request is made and a missing file is a `FetchError` naming the path. Offline and refresh together are a `ValueError`.
 - **R2.3** Every request sends a `User-Agent`. The default identifies `tools-dataset`, its version and this repo's URL; a dataset passes its own (name, version and repo URL) so upstream operators know who is downloading.
 - **R2.4** A download has a timeout and up to three attempts by default, waiting 2 s, then 4 s (doubling). A 4xx response is final and is not retried, except 408 and 429. The number of attempts, the first wait and the sleep function are parameters; fewer than one attempt is a `ValueError`.

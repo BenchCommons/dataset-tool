@@ -18,6 +18,10 @@ from types import ModuleType
 from urllib.parse import urlsplit
 
 
+# Source id format, shared by the registry and the cache.
+ID_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+
+
 class AdapterError(Exception):
     """Adapter absent, broken or outside the contract of R4."""
 

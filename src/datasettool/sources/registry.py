@@ -7,7 +7,6 @@ that builds its own source type.
 Ported from BenchCommons/dataset-names@e7e8405 src/namescommons/sources.py (generic part).
 """
 
-import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -17,9 +16,7 @@ from typing import Any, Generic, TypeVar
 
 import yaml
 
-from datasettool.sources.adapters import is_http_url
-
-ID_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+from datasettool.sources.adapters import ID_PATTERN, is_http_url
 
 # Licences that ask for no more than attribution, compatible with a CC BY 4.0 dataset (ADR 0006).
 # A starting set: each dataset declares its own list and extends it by its own ADR.
