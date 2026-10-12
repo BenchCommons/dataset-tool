@@ -293,17 +293,16 @@ def test_rows_read_leave_the_tree(tmp_path):
     data = "".join(f'<row r="{i}"><c r="A{i}"><v>{i}</v></c></row>' for i in range(1, 2001))
     f = _xlsx(tmp_path / "a.xlsx", [("X", data)])
     seen = []
-    original = spreadsheet.ET.iterparse
+    original = spreadsheet._events
 
     def spy(*args, **kwargs):
-        it = original(*args, **kwargs)
-        for event, el in it:
+        for event, el in original(*args, **kwargs):
             yield event, el
             if event == "end" and el.tag.endswith("sheetData"):
                 seen.append(len(el))
 
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(spreadsheet.ET, "iterparse", spy)
+    monkeypatch.setattr(spreadsheet, "_events", spy)
     try:
         assert sum(1 for _ in rows(f, "X")) == 2000
     finally:
@@ -413,3 +412,87 @@ def test_dtd_after_utf8_bom_is_refused(tmp_path, member, operation, prolog):
     f = _rewrite(base, tmp_path / "a.xlsx", member, f'﻿<?xml version="1.0"?>{prolog}{ROOTS[member]}')
     with pytest.raises(FormatError, match=rf"a\.xlsx: member {member} has a DTD"):
         operation(f)
+
+
+# DTD in encodings that escape a UTF-8 pre-scan (parser differential) --------------------------------
+# Ported from BenchCommons/dataset-names@eaaa4d1 (PR #39) tests/test_spreadsheet.py.
+
+_DTD = '<!DOCTYPE x [<!ENTITY a "b">]>'
+
+
+def _rewrite_bytes(src: Path, dest: Path, member: str, data: bytes) -> Path:
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in zin.infolist():
+            zout.writestr(info.filename, data if info.filename == member else zin.read(info.filename))
+    return dest
+
+
+@pytest.mark.parametrize("member, operation", OPERATIONS)
+@pytest.mark.parametrize("declared, codec", [
+    ("cp037", "cp037"),
+    ("utf-32", "utf-32"),
+    ("UTF-32LE", "utf-32-le"),
+    ("UTF-32BE", "utf-32-be"),
+    ("latin-1", "latin-1"),
+    ("iso-8859-1", "ascii"),
+    ("windows-1252", "cp1252"),
+    ("us-ascii", "ascii"),
+])
+def test_dtd_in_a_non_utf_encoding_is_refused(tmp_path, member, operation, declared, codec):
+    base = _xlsx(tmp_path / "base.xlsx", [("X", '<row r="1"><c r="A1"><v>1</v></c></row>')])
+    text = f'<?xml version="1.0" encoding="{declared}"?>{_DTD}{ROOTS[member]}'
+    f = _rewrite_bytes(base, tmp_path / "a.xlsx", member, text.encode(codec))
+    with pytest.raises(FormatError, match=rf"a\.xlsx: member {member} "):
+        operation(f)
+
+
+@pytest.mark.parametrize("member, operation", OPERATIONS)
+@pytest.mark.parametrize("data", [
+    '<?xml version="1.0"?>{dtd}{raiz}'.encode("cp037"),  # no declaration: EBCDIC is not UTF-8
+    '<?xml version="1.0"?>{dtd}{raiz}'.encode("utf-32-le"),
+    '<?xml version="1.0"?>{dtd}{raiz}'.encode("utf-32-be"),
+    b"\xff\xfe\x00\x00<\x00\x00\x00",
+    b"\x00\x00\xfe\xff\x00\x00\x00<",
+    b'<?xml version="1.0"?>\xe9{dtd}{raiz}',  # invalid UTF-8
+], ids=["ebcdic", "utf32le", "utf32be", "bom-utf32le", "bom-utf32be", "invalid-utf8"])
+def test_prefix_that_is_neither_utf8_nor_utf16_is_refused(tmp_path, member, operation, data):
+    base = _xlsx(tmp_path / "base.xlsx", [("X", '<row r="1"><c r="A1"><v>1</v></c></row>')])
+    f = _rewrite_bytes(base, tmp_path / "a.xlsx", member, data)
+    with pytest.raises(FormatError, match=rf"a\.xlsx: member {member} "):
+        operation(f)
+
+
+@pytest.mark.parametrize("member, operation", OPERATIONS)
+@pytest.mark.parametrize("codec, declared", [
+    ("utf-8", "UTF-8"), ("utf-8", "utf8"), ("utf-8", None), ("utf-16", "UTF-16"), ("utf-16", "utf16"),
+])
+def test_dtd_in_utf8_and_utf16_with_a_valid_declaration_is_still_refused(tmp_path, member, operation, codec, declared):
+    base = _xlsx(tmp_path / "base.xlsx", [("X", '<row r="1"><c r="A1"><v>1</v></c></row>')])
+    enc = f' encoding="{declared}"' if declared else ""
+    text = f'<?xml version="1.0"{enc}?>{_DTD}{ROOTS[member]}'
+    f = _rewrite_bytes(base, tmp_path / "a.xlsx", member, text.encode(codec))
+    with pytest.raises(FormatError, match=rf"a\.xlsx: member {member} has a DTD"):
+        operation(f)
+
+
+@pytest.mark.parametrize("codec, declared", [
+    ("utf-8", "UTF-8"), ("utf-8", "utf-8"), ("utf-16", "UTF-16"), ("utf-16-le", None)])
+def test_normal_xlsx_in_utf8_or_utf16_is_read(tmp_path, codec, declared):
+    base = _xlsx(tmp_path / "base.xlsx", [("X", "")])
+    enc = f' encoding="{declared}"' if declared else ""
+    text = (f'<?xml version="1.0"{enc}?><worksheet {NS}><sheetData><row r="1"><c r="A1" t="inlineStr">'
+            '<is><t>IÑIGO</t></is></c></row></sheetData></worksheet>')
+    f = _rewrite_bytes(base, tmp_path / "a.xlsx", "xl/worksheets/sheet1.xml", text.encode(codec))
+    assert list(rows(f, "X")) == [(1, ["IÑIGO"])]
+
+
+@pytest.mark.parametrize("member, operation", OPERATIONS)
+def test_the_parser_refuses_a_dtd_even_without_the_prescan(tmp_path, monkeypatch, member, operation):
+    """Defence in depth: with the pre-scan switched off, the expat handlers still refuse DTDs."""
+    import datasettool.sources.spreadsheet as spreadsheet
+    monkeypatch.setattr(spreadsheet, "_prologue", lambda data, where="": "root")
+    base = _xlsx(tmp_path / "base.xlsx", [("X", '<row r="1"><c r="A1"><v>1</v></c></row>')])
+    for dtd in (_DTD, BILLION_LAUGHS.split("<worksheet")[0].removeprefix('<?xml version="1.0"?>')):
+        f = _rewrite(base, tmp_path / "a.xlsx", member, f'<?xml version="1.0"?>{dtd}{ROOTS[member]}')
+        with pytest.raises(FormatError, match=rf"a\.xlsx: member {member} has a DTD"):
+            operation(f)

@@ -13,7 +13,7 @@ The source toolkit is ported from `dataset-names`, which uses `pyyaml` to read `
 ## Decision
 
 - Runtime dependencies: `pyyaml==6.0.3` (registry files) and `xlrd==2.0.2` (XLS). Both are pinned exactly in `pyproject.toml`, and `uv.lock` is committed.
-- The reasoning of dataset-names ADR 0005 is carried over unchanged: XLSX stays on the standard library; no `defusedxml` (expat in Python 3.12 does not fetch external entities and limits expansion, and the reader refuses any DTD in the prologue).
+- The reasoning of dataset-names ADR 0005 is carried over, including its amendment in dataset-names PR #39: XLSX stays on the standard library, without `defusedxml`. expat in Python 3.12 does not fetch external entities and limits expansion, and the reader refuses DTDs in two independent layers: (1) a pre-scan of the first 64 KiB, which must be valid UTF-8 or UTF-16 with an XML declaration naming no other encoding, so no encoding expat accepts can hide a `<!DOCTYPE` from the scan; (2) expat used directly with `ElementTree.TreeBuilder` (the C `ET.XMLParser` does not expose expat), with `StartDoctypeDeclHandler` and `EntityDeclHandler` raising `FormatError`, which holds even if the pre-scan fails and keeps streaming.
 - `pycountry`, `pyarrow` and any other library used by one dataset only stay in that dataset. A dataset passes its own field checks and row counters to the toolkit (spec 004, R5.4 and R6.3).
 - Adding a runtime dependency needs a new ADR.
 

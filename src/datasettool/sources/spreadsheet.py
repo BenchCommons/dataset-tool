@@ -6,10 +6,12 @@ XLS is read with xlrd. Both return values of the same types: str, int, float, bo
 Ported from BenchCommons/dataset-names@e7e8405 src/namescommons/spreadsheet.py.
 """
 
+import codecs
 import io
 import posixpath
 import re
 import xml.etree.ElementTree as ET
+import xml.parsers.expat as expat
 import zipfile
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -34,9 +36,14 @@ _MAX_MEMBER = 1 << 30
 _MAX_RATIO = 100
 _MIN_BYTES_RATIO = 1 << 20
 _INTEGER = re.compile(r"-?[0-9]+")
-# Defence in depth (ADR 0005): an XML member with a DTD is refused before it reaches the parser.
+# Defence in depth (ADR 0005): an XML member with a DTD is refused before it reaches the parser,
+# and the parser itself refuses one (_events).
 _MAX_PROLOGUE = 1 << 16
-_SPACE = re.compile(r"[\s﻿]*")
+_SPACE = re.compile(r"[\s\ufeff]*")
+_DECLARATION = re.compile(r"<\?xml(?=\s)(.*?)\?>", re.DOTALL)
+_ENCODING = re.compile(r"""\sencoding\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+_ENCODING_OK = re.compile(r"utf-?(?:8|16)", re.IGNORECASE)
+_BLOCK_SIZE = 1 << 16
 
 
 def _format(path: Path) -> str:
@@ -137,7 +144,11 @@ class _NoDtd(io.RawIOBase):
         while True:
             part = fh.read(4096)
             prefix += part
-            decision = _prologue(prefix)
+            try:
+                decision = _prologue(prefix, f"{path.name}: member {name}")
+            except FormatError:
+                fh.close()
+                raise
             if decision == "dtd":
                 fh.close()
                 raise FormatError(f"{path.name}: member {name} has a DTD (DOCTYPE or ENTITY); refused")
@@ -164,15 +175,47 @@ class _NoDtd(io.RawIOBase):
         super().close()
 
 
-def _prologue(data: bytes) -> str:
-    """'dtd' if DOCTYPE/ENTITY comes before the root element, 'root' if the root has started, else 'more'."""
+def _prefix_text(data: bytes, where: str) -> str:
+    """Decode the prefix as UTF-8 or UTF-16 (by BOM or NUL bytes); anything else is FormatError.
+
+    expat accepts any declared encoding it can map (single-byte codecs such as ISO-8859-x, and others),
+    and a DOCTYPE written that way would slip past a scan that reads only UTF-8; so the rest is refused.
+    """
+    if data[:4] in (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff") or data[:4] in (b"<\x00\x00\x00", b"\x00\x00\x00<"):
+        raise FormatError(f"{where} is in UTF-32; only UTF-8 and UTF-16 are accepted")
     if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
-        text = data.decode("utf-16", errors="replace")
+        codec = "utf-16"
+    elif data[:4] == b"<\x00?\x00":
+        codec = "utf-16-le"
+    elif data[:4] == b"\x00<\x00?":
+        codec = "utf-16-be"
     elif b"\x00" in data[:4]:
-        text = data.decode("utf-16-le" if data[1:2] == b"\x00" else "utf-16-be", errors="replace")
+        raise FormatError(f"{where} starts with NUL bytes that are not UTF-16; only UTF-8 and UTF-16 are accepted")
     else:
-        # UTF-8 (optional BOM). UTF-32 and EBCDIC are not inspected and fail in expat.
-        text = data.removeprefix(b"\xef\xbb\xbf").decode("utf-8", errors="replace")
+        codec = "utf-8-sig"
+    try:
+        # final=False: the prefix may end in the middle of a multi-byte character.
+        return codecs.getincrementaldecoder(codec)("strict").decode(data, final=False)
+    except UnicodeDecodeError:
+        raise FormatError(f"{where} is not valid UTF-8 or UTF-16; only these encodings are accepted") from None
+
+
+def _check_declaration(text: str, where: str) -> None:
+    """The declaration `<?xml ... encoding=...?>` may only say UTF-8 or UTF-16 (or say nothing)."""
+    m = _DECLARATION.match(text)
+    if m and (e := _ENCODING.search(m.group(0))):
+        name = e.group(1) if e.group(1) is not None else e.group(2)
+        if not _ENCODING_OK.fullmatch(name):
+            raise FormatError(f"{where} declares the encoding {name!r}; only UTF-8 and UTF-16 are accepted")
+
+
+def _prologue(data: bytes, where: str = "XML member") -> str:
+    """'dtd' if DOCTYPE/ENTITY comes before the root element, 'root' if the root has started, else 'more'.
+
+    FormatError if the prefix is not UTF-8 or UTF-16, or if the XML declaration asks for another encoding.
+    """
+    text = _prefix_text(data, where)
+    _check_declaration(text.lstrip("\ufeff"), where)
     i = 0
     while True:
         i = _SPACE.match(text, i).end()
@@ -193,13 +236,70 @@ def _prologue(data: bytes) -> str:
         i = end + skip
 
 
+def _events(fh, name: str, path: Path, events=("end",)) -> Iterator[tuple[str, ET.Element]]:
+    """Events ("start"/"end", element) of a member's XML, streamed, on an expat parser that refuses DTDs.
+
+    Defence in depth, independent of the prologue pre-scan (ADR 0005): expat itself raises
+    FormatError when it sees DOCTYPE or ENTITY, in any encoding it accepts. The C `ET.XMLParser`
+    does not expose expat, so expat is used directly, with `ET.TreeBuilder`.
+    A syntax error becomes `ET.ParseError`, as with `iterparse`.
+    """
+    def refuse(*_args):
+        raise FormatError(f"{path.name}: member {name} has a DTD (DOCTYPE or ENTITY); refused")
+
+    builder = ET.TreeBuilder()
+    pending: list[tuple[str, ET.Element]] = []
+    want_start, want_end = "start" in events, "end" in events
+
+    def start(tag, attributes):
+        el = builder.start(tag, attributes)
+        if want_start:
+            pending.append(("start", el))
+
+    def end(tag):
+        el = builder.end(tag)
+        if want_end:
+            pending.append(("end", el))
+
+    parser = expat.ParserCreate(namespace_separator="}")
+    parser.buffer_text = True
+    parser.StartDoctypeDeclHandler = refuse
+    parser.EntityDeclHandler = refuse
+    parser.StartElementHandler = lambda tag, attrs: start(_tag(tag), {_tag(k): v for k, v in attrs.items()})
+    parser.EndElementHandler = lambda tag: end(_tag(tag))
+    parser.CharacterDataHandler = builder.data
+    try:
+        while True:
+            block = fh.read(_BLOCK_SIZE)
+            parser.Parse(block, not block)
+            yield from pending
+            pending.clear()
+            if not block:
+                break
+    except expat.ExpatError as e:
+        raise ET.ParseError(str(e)) from None
+
+
+def _tag(name: str) -> str:
+    """expat's 'uri}local' becomes '{uri}local' (ElementTree's qualified name)."""
+    return "{" + name if "}" in name else name
+
+
+def _root(fh, name: str, path: Path) -> ET.Element:
+    """Root element of a member's XML (`ET.parse(...).getroot()` with DTDs refused)."""
+    root = None
+    for _, el in _events(fh, name, path):
+        root = el
+    return root
+
+
 def _xlsx_sheets(z: zipfile.ZipFile, path: Path) -> list[tuple[str, str]]:
     """(name, ZIP member) of each sheet, in the order of xl/workbook.xml."""
     try:
         with _member(z, "xl/workbook.xml", path) as fh:
-            book = ET.parse(fh).getroot()
+            book = _root(fh, "xl/workbook.xml", path)
         with _member(z, "xl/_rels/workbook.xml.rels", path) as fh:
-            rels = ET.parse(fh).getroot()
+            rels = _root(fh, "xl/_rels/workbook.xml.rels", path)
     except ET.ParseError as e:
         raise FormatError(f"{path.name}: unreadable XLSX workbook: {e}") from None
     targets = {r.get("Id"): r.get("Target", "") for r in rels.iter(_REL_PKG + "Relationship")}
@@ -230,7 +330,7 @@ def _shared_strings(z: zipfile.ZipFile, path: Path) -> list[str]:
     strings = []
     with _member(z, "xl/sharedStrings.xml", path) as fh:
         try:
-            for _, el in ET.iterparse(fh):
+            for _, el in _events(fh, "xl/sharedStrings.xml", path):
                 if el.tag == _SI:
                     strings.append(_text(el))
                     el.clear()
@@ -303,7 +403,7 @@ def _xlsx_rows(path: Path, sheet: str) -> Iterator[tuple[int, list]]:
         with _member(z, member, path) as fh:
             number, parent = 0, None
             try:
-                for event, el in ET.iterparse(fh, events=("start", "end")):
+                for event, el in _events(fh, member, path, ("start", "end")):
                     if event == "start":
                         if el.tag == _SHEET_DATA:
                             parent = el
